@@ -8,23 +8,23 @@ datasource db {
 }
 
 model Attendance {
-  id          String    @id @default(uuid())
-  scheduleId  String    @unique
-  patientId   String
-  doctorId    String
-  symptoms    String
-  diagnosis   String?
-  prescription String?
-  observations String?
-  vitalSigns  Json
-  status      String    @default("in_progress")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  schedule    Schedule  @relation(fields: [scheduleId], references: [id])
-  patient     User      @relation("PatientAttendances", fields: [patientId], references: [id])
-  doctor      User      @relation("DoctorAttendances", fields: [doctorId], references: [id])
-  prescriptions Prescription[]
-  certificates  Certificate[]
+  id              String    @id @default(uuid())
+  scheduleId      String    @unique
+  patientId       String
+  doctorId        String
+  status          String    @default("in_progress")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  schedule        Schedule  @relation(fields: [scheduleId], references: [id])
+  patient         User      @relation("PatientAttendances", fields: [patientId], references: [id])
+  doctor          User      @relation("DoctorAttendances", fields: [doctorId], references: [id])
+  vitalSigns      VitalSigns[]
+  medicalCertificates MedicalCertificate[]
+  medications     Medication[]
+  medicalExams    MedicalExam[]
+  clinicalNotes   ClinicalNote[]
+  prescriptions   Prescription[]
+  certificates    Certificate[]
 
   @@map("attendances")
 }
@@ -92,25 +92,42 @@ model Role {
 model User {
   id                String       @id @default(uuid())
   name              String
+  nomeSocial        String?
   email             String       @unique
   password          String?
   googleId          String?
   profilePicture    String?
   isActive          Boolean      @default(true)
   roleId            String
-  dateOfBirth       DateTime?
-  gender            String?
+  dateOfBirth       DateTime?    // mantido para compatibilidade
+  gender            String?      // mantido para compatibilidade
+  naturalidade      String?
+  nomeMae           String?
+  nomePai           String?
+  estadoCivil       String?
+  escolaridade      String?
+  telefone          String?
+  celular           String?
+  tipoSanguineo     String?
+  raca              String?
+  cpf               String?      @unique
   insurance         String?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+  role              Role         @relation(fields: [roleId], references: [id])
   schedules         Schedule[]   @relation("DoctorSchedules")
   userSchedules     Schedule[]   @relation("UserSchedules")
-  role              Role         @relation(fields: [roleId], references: [id])
   patientAttendances Attendance[] @relation("PatientAttendances")
   doctorAttendances  Attendance[] @relation("DoctorAttendances")
   prescriptions     Prescription[] @relation("UserPrescriptions")
   certificates      Certificate[]  @relation("UserCertificates")
   specialties       UserSpecialty[]
+  vitalSigns        VitalSigns[]          @relation("UserVitalSigns")
+  medicalCertificates MedicalCertificate[]  @relation("UserMedicalCertificates")
+  medications       Medication[]          @relation("UserMedications")
+  medicalExams      MedicalExam[]         @relation("UserMedicalExams")
+  clinicalNotes     ClinicalNote[]        @relation("UserClinicalNotes")
+  allergies         Allergy[]             @relation("UserAllergies")
 
   @@map("users")
 }
@@ -182,4 +199,111 @@ model Medicamento {
   fabricante            Fabricante    @relation(fields: [fabricanteId], references: [id])
 
   @@map("medicamentos")
+}
+
+model VitalSigns {
+  id            String      @id @default(uuid())
+  userId        String
+  attendanceId  String?
+  temperature   Float?
+  bloodPressure String?
+  heartRate     Int?
+  respiratoryRate Int?
+  oxygenSaturation Int?
+  weight        Float?
+  height        Float?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation("UserVitalSigns", fields: [userId], references: [id])
+  attendance    Attendance? @relation(fields: [attendanceId], references: [id])
+
+  @@map("vital_signs")
+}
+
+model MedicalCertificate {
+  id            String      @id @default(uuid())
+  userId        String
+  attendanceId  String?
+  type          String      // Tipo do atestado (trabalho, escola, etc)
+  startDate     DateTime
+  endDate       DateTime?
+  cid           String?     // Classificação Internacional de Doenças
+  description   String
+  daysOff       Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation("UserMedicalCertificates", fields: [userId], references: [id])
+  attendance    Attendance? @relation(fields: [attendanceId], references: [id])
+
+  @@map("medical_certificates")
+}
+
+model Medication {
+  id              String    @id @default(uuid())
+  userId          String
+  attendanceId    String?
+  name            String
+  dosage          String
+  frequency       String
+  duration        String?
+  instructions    String?
+  startDate       DateTime
+  endDate         DateTime?
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation("UserMedications", fields: [userId], references: [id])
+  attendance      Attendance? @relation(fields: [attendanceId], references: [id])
+
+  @@map("medications")
+}
+
+model MedicalExam {
+  id            String      @id @default(uuid())
+  userId        String
+  attendanceId  String?
+  examType      String
+  requestDate   DateTime
+  resultDate    DateTime?
+  status        String      @default("pending") // pending, completed, cancelled
+  result        String?
+  laboratory    String?
+  observations  String?
+  attachments   Json?       // URLs dos anexos
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation("UserMedicalExams", fields: [userId], references: [id])
+  attendance    Attendance? @relation(fields: [attendanceId], references: [id])
+
+  @@map("medical_exams")
+}
+
+model ClinicalNote {
+  id            String      @id @default(uuid())
+  userId        String
+  attendanceId  String?
+  noteType      String      // evolução, prescrição, etc
+  content       String      @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  user          User        @relation("UserClinicalNotes", fields: [userId], references: [id])
+  attendance    Attendance? @relation(fields: [attendanceId], references: [id])
+
+  @@map("clinical_notes")
+}
+
+model Allergy {
+  id            String    @id @default(uuid())
+  userId        String
+  allergen      String    // Substância/item causador
+  severity      String    // leve, moderada, grave
+  reactions     String    // Descrição das reações
+  diagnosed     DateTime?
+  notes         String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation("UserAllergies", fields: [userId], references: [id])
+
+  @@map("allergies")
 }

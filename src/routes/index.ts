@@ -1,34 +1,41 @@
 import { Router } from 'express';
-import userRoutes from './user.routes';
-import patientRoutes from './patient.routes';
-import attendanceRoutes from './attendance.routes';
-import prescriptionRoutes from './prescription.routes';
-import certificateRoutes from './certificate.routes';
-import scheduleRoutes from './schedule.routes';
-import roleRoutes from './role.routes';
-import medicamentoRoutes from './medicamentoRoutes';
-import fabricanteRoutes from './fabricanteRoutes';
+import userRouter from './user.routes';
+import authRouter from './auth.routes';
+import scheduleRouter from './schedule.routes';
+import attendanceRouter from './attendance.routes';
 import { specialtyRouter } from './specialty.routes';
+import fabricanteRouter from './fabricanteRoutes';
+import medicamentoRouter from './medicamentoRoutes';
+import vitalSignsRouter from './vitalSigns.routes';
+import medicalCertificateRouter from './medicalCertificate.routes';
+import medicationRouter from './medication.routes';
+import medicalExamRouter from './medicalExam.routes';
+import clinicalNoteRouter from './clinicalNote.routes';
+import allergyRouter from './allergy.routes';
 import { verificarAutenticacao } from '../middlewares/authMiddleware';
 
 const routes = Router();
 
-// Middleware de autenticação global para todas as rotas
+// Rotas públicas
+routes.use('/auth', authRouter);
+
+// Middleware de autenticação para todas as rotas abaixo
 routes.use(verificarAutenticacao);
 
-routes.use('/users', userRoutes);
-routes.use('/patients', patientRoutes);
-routes.use('/attendances', attendanceRoutes);
-routes.use('/prescriptions', prescriptionRoutes);
-routes.use('/certificates', certificateRoutes);
-routes.use('/schedules', scheduleRoutes);
-routes.use('/roles', roleRoutes);
+// Rotas protegidas
+routes.use('/users', userRouter);
+routes.use('/schedules', scheduleRouter);
+routes.use('/attendances', attendanceRouter);
 routes.use('/specialties', specialtyRouter);
+routes.use('/fabricantes', fabricanteRouter);
+routes.use('/medicamentos', medicamentoRouter);
 
-// Rotas de medicamentos
-routes.use('/', medicamentoRoutes);
-
-// Rotas de fabricantes
-routes.use('/fabricantes', fabricanteRoutes);
+// Rotas do prontuário médico
+routes.use('/vital-signs', vitalSignsRouter);
+routes.use('/medical-certificates', medicalCertificateRouter);
+routes.use('/medications', medicationRouter);
+routes.use('/medical-exams', medicalExamRouter);
+routes.use('/clinical-notes', clinicalNoteRouter);
+routes.use('/allergies', allergyRouter);
 
 export default routes; 

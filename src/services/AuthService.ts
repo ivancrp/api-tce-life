@@ -124,14 +124,13 @@ export class AuthService {
       } else {
         console.log('Criando novo usuário a partir da autenticação Google:', googleUserInfo.email);
         // Se não existir, criar um novo usuário
-        // Buscar role de médico (padrão para usuários que fazem login com Google)
-        const medicoRole = await prisma.role.findUnique({
-          where: { name: 'MEDICO' }
+        // Buscar role de paciente (padrão para novos usuários)
+        const pacienteRole = await prisma.role.findUnique({
+          where: { name: 'PACIENTE' }
         });
         
-        if (!medicoRole) {
-          console.error('Role MEDICO não encontrada');
-          throw new Error('Configuração do sistema incompleta: Role MEDICO não encontrada');
+        if (!pacienteRole) {
+          throw new Error('Role PACIENTE não encontrada');
         }
         
         // Criar usuário
@@ -141,7 +140,7 @@ export class AuthService {
             email: googleUserInfo.email,
             profilePicture: googleUserInfo.picture || null,
             googleId: googleUserInfo.sub || '',
-            roleId: medicoRole.id,
+            roleId: pacienteRole.id,
             isActive: true
           },
           include: { role: true }
@@ -155,7 +154,7 @@ export class AuthService {
       }
       
       // Verificar se o usuário foi encontrado/criado corretamente
-      if (!user) {
+      if (!user || !user.role) {
         throw new Error('Não foi possível criar ou encontrar o usuário');
       }
       

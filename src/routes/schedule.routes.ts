@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { ScheduleController } from '../controllers/ScheduleController';
+import { authMiddleware } from '../middlewares/auth';
 
 const scheduleRoutes = Router();
 const scheduleController = new ScheduleController();
+
+// Aplicar middleware de autenticação em todas as rotas
+scheduleRoutes.use(authMiddleware);
 
 // Rotas para agendamentos
 scheduleRoutes.get('/', scheduleController.getAllSchedules.bind(scheduleController));

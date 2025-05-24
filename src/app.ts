@@ -8,6 +8,7 @@ import { errorMiddleware } from './middlewares/error.middleware';
 import routes from './routes';
 import { specialtyRouter } from './routes/specialty.routes';
 import authRoutes from './routes/auth.routes';
+import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
 
@@ -49,6 +50,6 @@ app.use('/api', routes);
 app.use('/api/specialties', specialtyRouter);
 
 // Middleware de erro
-app.use(errorMiddleware);
+app.use(errorHandler);
 
 export { app }; 
