@@ -12,6 +12,7 @@ import medicationRouter from './medication.routes';
 import medicalExamRouter from './medicalExam.routes';
 import clinicalNoteRouter from './clinicalNote.routes';
 import allergyRouter from './allergy.routes';
+import patientRouter from './patient.routes';
 import { verificarAutenticacao } from '../middlewares/authMiddleware';
 
 const routes = Router();
@@ -24,13 +25,12 @@ routes.use(verificarAutenticacao);
 
 // Rotas protegidas
 routes.use('/users', userRouter);
-routes.use('/schedules', scheduleRouter);
-routes.use('/attendances', attendanceRouter);
+routes.use('/patients', patientRouter);
+routes.use('/schedule', scheduleRouter);
+routes.use('/attendance', attendanceRouter);
 routes.use('/specialties', specialtyRouter);
 routes.use('/fabricantes', fabricanteRouter);
 routes.use('/medicamentos', medicamentoRouter);
-
-// Rotas do prontuário médico
 routes.use('/vital-signs', vitalSignsRouter);
 routes.use('/medical-certificates', medicalCertificateRouter);
 routes.use('/medications', medicationRouter);

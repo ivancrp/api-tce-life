@@ -298,72 +298,160 @@ export class AttendanceService {
         observations: true,
         createdAt: true,
         updatedAt: true,
-        patient: true,
-        doctor: true,
-        schedule: true
+        patient: {
+          select: {
+            id: true,
+            name: true,
+            nomeSocial: true,
+            email: true,
+            profilePicture: true,
+            isActive: true,
+            roleId: true,
+            dateOfBirth: true,
+            gender: true,
+            naturalidade: true,
+            nomeMae: true,
+            nomePai: true,
+            estadoCivil: true,
+            escolaridade: true,
+            telefone: true,
+            celular: true,
+            tipoSanguineo: true,
+            raca: true,
+            cpf: true,
+            insurance: true,
+            allergies: {
+              where: {
+                active: true
+              },
+              select: {
+                allergen: true
+              }
+            },
+            medications: {
+              where: {
+                active: true,
+                attendanceId: null
+              },
+              select: {
+                id: true,
+                userId: true,
+                attendanceId: true,
+                name: true,
+                dosage: true,
+                frequency: true,
+                duration: true,
+                instructions: true,
+                startDate: true,
+                endDate: true,
+                active: true,
+                createdAt: true,
+                updatedAt: true
+              }
+            }
+          }
+        },
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        schedule: {
+          select: {
+            id: true,
+            userId: true,
+            doctorId: true,
+            date: true,
+            time: true,
+            status: true,
+            type: true,
+            notes: true
+          }
+        },
+        clinicalNotes: {
+          select: {
+            id: true,
+            noteType: true,
+            content: true,
+            createdAt: true
+          }
+        },
+        medicalExams: {
+          select: {
+            id: true,
+            examType: true,
+            requestDate: true,
+            resultDate: true,
+            status: true,
+            result: true,
+            laboratory: true,
+            observations: true,
+            createdAt: true
+          }
+        },
+        medicalCertificates: {
+          select: {
+            id: true,
+            type: true,
+            startDate: true,
+            endDate: true,
+            cid: true,
+            description: true,
+            daysOff: true,
+            createdAt: true
+          }
+        },
+        medications: {
+          where: {
+            active: true
+          },
+          select: {
+            id: true,
+            name: true,
+            dosage: true,
+            frequency: true,
+            duration: true,
+            instructions: true,
+            startDate: true,
+            endDate: true,
+            active: true,
+            createdAt: true
+          }
+        }
       }
     });
-
-    console.log('Resultado da busca:', attendance);
 
     if (!attendance) {
       throw new AppError('Atendimento não encontrado', 404);
     }
 
     // Buscar os registros relacionados
-    const [
-      vitalSigns,
-      clinicalNotes,
-      medications,
-      medicalExams,
-      medicalCertificates
-    ] = await Promise.all([
-      this.prisma.$queryRaw`
-        SELECT * FROM vital_signs
-        WHERE "attendanceId" = ${id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM clinical_notes
-        WHERE "attendanceId" = ${id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM medications
-        WHERE "attendanceId" = ${id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM medical_exams
-        WHERE "attendanceId" = ${id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM medical_certificates
-        WHERE "attendanceId" = ${id}
-        ORDER BY "createdAt" DESC
-      `
+    const [vitalSigns] = await Promise.all([
+      this.prisma.vitalSigns.findFirst({
+        where: { attendanceId: attendance.id },
+        orderBy: { createdAt: 'desc' }
+      })
     ]);
 
-    console.log('Registros relacionados:', {
-      vitalSigns,
-      clinicalNotes,
-      medications,
-      medicalExams,
-      medicalCertificates
-    });
-
-    return {
-      ...attendance,
-      vitalSigns,
-      clinicalNotes,
-      medications,
-      medicalExams,
-      medicalCertificates
+    // Formatar as alergias
+    const formattedPatient = {
+      ...attendance.patient,
+      allergies: attendance.patient.allergies.map(a => a.allergen)
     };
+
+    const result = {
+      ...attendance,
+      patient: formattedPatient,
+      vitalSigns: vitalSigns || null
+    };
+
+    return result;
   }
 
   async findByScheduleId(scheduleId: string) {
+    console.log('Buscando atendimento pelo scheduleId:', scheduleId);
     const attendance = await this.prisma.attendance.findUnique({
       where: { scheduleId },
       select: {
@@ -378,9 +466,128 @@ export class AttendanceService {
         observations: true,
         createdAt: true,
         updatedAt: true,
-        patient: true,
-        doctor: true,
-        schedule: true
+        patient: {
+          select: {
+            id: true,
+            name: true,
+            nomeSocial: true,
+            email: true,
+            profilePicture: true,
+            isActive: true,
+            roleId: true,
+            dateOfBirth: true,
+            gender: true,
+            naturalidade: true,
+            nomeMae: true,
+            nomePai: true,
+            estadoCivil: true,
+            escolaridade: true,
+            telefone: true,
+            celular: true,
+            tipoSanguineo: true,
+            raca: true,
+            cpf: true,
+            insurance: true,
+            allergies: {
+              where: {
+                active: true
+              },
+              select: {
+                allergen: true
+              }
+            },
+            medications: {
+              where: {
+                active: true,
+                attendanceId: null
+              },
+              select: {
+                id: true,
+                userId: true,
+                attendanceId: true,
+                name: true,
+                dosage: true,
+                frequency: true,
+                duration: true,
+                instructions: true,
+                startDate: true,
+                endDate: true,
+                active: true,
+                createdAt: true,
+                updatedAt: true
+              }
+            }
+          }
+        },
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        schedule: {
+          select: {
+            id: true,
+            userId: true,
+            doctorId: true,
+            date: true,
+            time: true,
+            status: true,
+            type: true,
+            notes: true
+          }
+        },
+        clinicalNotes: {
+          select: {
+            id: true,
+            noteType: true,
+            content: true,
+            createdAt: true
+          }
+        },
+        medicalExams: {
+          select: {
+            id: true,
+            examType: true,
+            requestDate: true,
+            resultDate: true,
+            status: true,
+            result: true,
+            laboratory: true,
+            observations: true,
+            createdAt: true
+          }
+        },
+        medicalCertificates: {
+          select: {
+            id: true,
+            type: true,
+            startDate: true,
+            endDate: true,
+            cid: true,
+            description: true,
+            daysOff: true,
+            createdAt: true
+          }
+        },
+        medications: {
+          where: {
+            active: true
+          },
+          select: {
+            id: true,
+            name: true,
+            dosage: true,
+            frequency: true,
+            duration: true,
+            instructions: true,
+            startDate: true,
+            endDate: true,
+            active: true,
+            createdAt: true
+          }
+        }
       }
     });
 
@@ -389,48 +596,26 @@ export class AttendanceService {
     }
 
     // Buscar os registros relacionados
-    const [
-      vitalSigns,
-      clinicalNotes,
-      medications,
-      medicalExams,
-      medicalCertificates
-    ] = await Promise.all([
-      this.prisma.$queryRaw`
-        SELECT * FROM vital_signs
-        WHERE "attendanceId" = ${attendance.id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM clinical_notes
-        WHERE "attendanceId" = ${attendance.id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM medications
-        WHERE "attendanceId" = ${attendance.id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM medical_exams
-        WHERE "attendanceId" = ${attendance.id}
-        ORDER BY "createdAt" DESC
-      `,
-      this.prisma.$queryRaw`
-        SELECT * FROM medical_certificates
-        WHERE "attendanceId" = ${attendance.id}
-        ORDER BY "createdAt" DESC
-      `
+    const [vitalSigns] = await Promise.all([
+      this.prisma.vitalSigns.findFirst({
+        where: { attendanceId: attendance.id },
+        orderBy: { createdAt: 'desc' }
+      })
     ]);
 
-    return {
-      ...attendance,
-      vitalSigns,
-      clinicalNotes,
-      medications,
-      medicalExams,
-      medicalCertificates
+    // Formatar as alergias
+    const formattedPatient = {
+      ...attendance.patient,
+      allergies: attendance.patient.allergies.map(a => a.allergen)
     };
+
+    const result = {
+      ...attendance,
+      patient: formattedPatient,
+      vitalSigns: vitalSigns || null
+    };
+
+    return result;
   }
 
   async update(id: string, data: UpdateAttendanceDTO) {
