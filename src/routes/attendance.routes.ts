@@ -1,17 +1,23 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { AttendanceService } from '../services/AttendanceService';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
+import { verificarAutenticacao } from '../middlewares/authMiddleware';
 
 const router = Router();
 const prisma = new PrismaClient();
 const attendanceService = new AttendanceService(prisma);
+
+// Aplicar middleware de autenticação para todas as rotas
+router.use(verificarAutenticacao);
 
 // Listar todos os atendimentos
 router.get('/', async (req, res) => {
   try {
     const attendances = await prisma.attendance.findMany({
       include: {
-        user: true,
+        patient: true,
+        doctor: true,
         prescriptions: true,
         certificates: true
       }
@@ -22,7 +28,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Iniciar um atendimento (deve vir antes das rotas com parâmetros)
+// Criar um novo atendimento
+router.post('/', async (req, res) => {
+  try {
+    const attendance = await attendanceService.create(req.body);
+    res.status(201).json(attendance);
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ message: error.message });
+  }
+});
+
+// Iniciar um atendimento
 router.post('/start', async (req, res) => {
   try {
     console.log('Recebida requisição para iniciar atendimento:', {
@@ -46,6 +62,82 @@ router.post('/start', async (req, res) => {
   } catch (error: any) {
     console.error('Erro ao iniciar atendimento:', error);
     res.status(error.statusCode || 500).json({ message: error.message });
+  }
+});
+
+// Rota para estatísticas
+router.get('/stats', async (req, res) => {
+  try {
+    const now = new Date();
+    
+    const [atendimentosHoje, atendimentosSemana] = await Promise.all([
+      // Atendimentos de hoje
+      prisma.attendance.count({
+        where: {
+          createdAt: {
+            gte: startOfDay(now),
+            lte: endOfDay(now)
+          }
+        }
+      }),
+      // Atendimentos da semana
+      prisma.attendance.count({
+        where: {
+          createdAt: {
+            gte: startOfWeek(now),
+            lte: endOfWeek(now)
+          }
+        }
+      })
+    ]);
+
+    // Buscar atendimentos da semana com dados do médico
+    const atendimentosSemanaDetalhes = await prisma.attendance.findMany({
+      where: {
+        createdAt: {
+          gte: startOfWeek(now),
+          lte: endOfWeek(now)
+        }
+      },
+      include: {
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            specialties: {
+              include: {
+                specialty: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Agrupar por especialidade
+    const especialidadesMap = new Map<string, number>();
+    atendimentosSemanaDetalhes.forEach(atendimento => {
+      const especialidade = atendimento.doctor?.specialties[0]?.specialty?.name || 'Não especificada';
+      especialidadesMap.set(
+        especialidade, 
+        (especialidadesMap.get(especialidade) || 0) + 1
+      );
+    });
+
+    // Converter para o formato esperado
+    const especialidades = Array.from(especialidadesMap.entries()).map(([nome, quantidade]) => ({
+      nome,
+      quantidade
+    }));
+
+    return res.json({
+      atendimentosHoje,
+      atendimentosSemana,
+      especialidades
+    });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas:', error);
+    return res.status(500).json({ error: 'Erro ao buscar estatísticas' });
   }
 });
 
@@ -74,16 +166,6 @@ router.get('/:id', async (req, res) => {
   try {
     const attendance = await attendanceService.findById(req.params.id);
     res.json(attendance);
-  } catch (error: any) {
-    res.status(error.statusCode || 500).json({ message: error.message });
-  }
-});
-
-// Criar um novo atendimento
-router.post('/', async (req, res) => {
-  try {
-    const attendance = await attendanceService.create(req.body);
-    res.status(201).json(attendance);
   } catch (error: any) {
     res.status(error.statusCode || 500).json({ message: error.message });
   }

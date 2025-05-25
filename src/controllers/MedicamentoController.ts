@@ -98,37 +98,59 @@ export class MedicamentoController {
     async relatorioEstoque(req: Request, res: Response) {
         try {
             const medicamentos = await prisma.medicamento.findMany({
-                where: {
-                    ativo: true
-                },
                 include: {
                     fabricante: true
                 }
             });
 
             const hoje = new Date();
-            const trintaDias = new Date();
-            trintaDias.setDate(hoje.getDate() + 30);
+            const trintaDias = addDays(hoje, 30);
 
-            const medicamentosProximosVencimento = medicamentos.filter((med: any) => {
+            const medicamentosProximosVencimento = medicamentos.filter(med => {
                 const dataValidade = new Date(med.dataValidade);
                 return dataValidade <= trintaDias && dataValidade >= hoje;
             });
 
-            const medicamentosEstoqueBaixo = medicamentos.filter((med: any) => 
+            const medicamentosEstoqueBaixo = medicamentos.filter(med => 
                 med.quantidadeEstoque <= med.quantidadeMinima
             );
 
             const totalMedicamentos = medicamentos.length;
 
             res.json({
-                medicamentosProximosVencimento,
-                medicamentosEstoqueBaixo,
-                totalMedicamentos
+                medicamentosProximosVencimento: medicamentosProximosVencimento.map(med => ({
+                    id: med.id,
+                    nomeComercial: med.nomeComercial,
+                    nomeGenerico: med.nomeGenerico,
+                    fabricante: med.fabricante.nome,
+                    lote: med.lote,
+                    dataValidade: med.dataValidade,
+                    quantidadeEstoque: med.quantidadeEstoque
+                })),
+                medicamentosEstoqueBaixo: medicamentosEstoqueBaixo.map(med => ({
+                    id: med.id,
+                    nomeComercial: med.nomeComercial,
+                    nomeGenerico: med.nomeGenerico,
+                    fabricante: med.fabricante.nome,
+                    quantidadeEstoque: med.quantidadeEstoque,
+                    quantidadeMinima: med.quantidadeMinima
+                })),
+                totalMedicamentos,
+                medicamentos: medicamentos.map(med => ({
+                    id: med.id,
+                    nomeComercial: med.nomeComercial,
+                    nomeGenerico: med.nomeGenerico,
+                    fabricante: med.fabricante.nome,
+                    lote: med.lote,
+                    dataValidade: med.dataValidade,
+                    quantidadeEstoque: med.quantidadeEstoque,
+                    quantidadeMinima: med.quantidadeMinima,
+                    localArmazenamento: med.localArmazenamento
+                }))
             });
         } catch (error) {
-            console.error('Erro ao gerar relatório:', error);
-            res.status(500).json({ error: 'Erro ao gerar relatório do estoque' });
+            console.error('Erro ao gerar relatório de estoque:', error);
+            return res.status(500).json({ error: 'Erro ao gerar relatório de estoque' });
         }
     }
 

@@ -752,4 +752,31 @@ export class AttendanceService {
 
     return this.findById(id);
   }
+
+  async findByPatientId(patientId: string) {
+    return this.prisma.attendance.findMany({
+      where: { patientId },
+      include: {
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            specialties: {
+              include: {
+                specialty: true
+              }
+            }
+          }
+        },
+        prescriptions: true,
+        certificates: true,
+        vitalSigns: true,
+        medicalExams: true,
+        clinicalNotes: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  }
 } 

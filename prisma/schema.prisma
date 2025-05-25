@@ -31,6 +31,8 @@ model Attendance {
   certificates    Certificate[]
 
   @@map("attendances")
+  @@index([doctorId])
+  @@index([patientId])
 }
 
 model Prescription {
@@ -98,7 +100,7 @@ model User {
   name              String
   nomeSocial        String?
   email             String       @unique
-  password          String?
+  password          String
   googleId          String?
   profilePicture    String?
   isActive          Boolean      @default(true)
@@ -116,6 +118,7 @@ model User {
   raca              String?
   cpf               String?      @unique
   insurance         String?
+  specialty         String?     // Campo para especialidade do médico
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   role              Role         @relation(fields: [roleId], references: [id])
