@@ -9,7 +9,7 @@ import medicamentoRouter from './medicamentoRoutes';
 import vitalSignsRouter from './vitalSigns.routes';
 import medicalCertificateRouter from './medicalCertificate.routes';
 import medicationRouter from './medication.routes';
-import medicalExamRouter from './medicalExam.routes';
+import medicalExamRouter from './medical-exam.routes';
 import clinicalNoteRouter from './clinicalNote.routes';
 import allergyRouter from './allergy.routes';
 import patientRouter from './patient.routes';

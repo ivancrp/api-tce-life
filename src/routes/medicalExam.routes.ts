@@ -12,9 +12,30 @@ medicalExamRouter.use(verificarAutenticacao);
 
 // Criar novo exame
 medicalExamRouter.post('/', async (req, res) => {
-  const data = req.body;
-  const exam = await medicalExamService.create(data);
-  return res.status(201).json(exam);
+  try {
+    console.log('[MedicalExam] Recebendo requisição para criar exame:', {
+      body: req.body,
+      headers: req.headers
+    });
+
+    const data = req.body;
+    console.log('[MedicalExam] Dados processados:', data);
+
+    const exam = await medicalExamService.create(data);
+    console.log('[MedicalExam] Exame criado com sucesso:', exam);
+
+    return res.status(201).json(exam);
+  } catch (error: any) {
+    console.error('[MedicalExam] Erro ao criar exame:', {
+      message: error.message,
+      stack: error.stack
+    });
+    return res.status(400).json({ 
+      error: true, 
+      message: error.message || 'Erro ao criar exame médico',
+      details: error.stack
+    });
+  }
 });
 
 // Buscar exames por ID do usuário

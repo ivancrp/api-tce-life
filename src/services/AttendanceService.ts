@@ -31,7 +31,7 @@ interface CreateAttendanceDTO {
     examType: string;
     requestDate: Date;
     laboratory?: string;
-    observations?: string;
+  observations?: string;
   }[];
   medicalCertificates?: {
     type: string;
@@ -404,7 +404,7 @@ export class AttendanceService {
           }
         },
         medications: {
-          where: {
+      where: {
             active: true
           },
           select: {
@@ -707,7 +707,7 @@ export class AttendanceService {
 
     // Atualizar o status do atendimento
     await this.prisma.attendance.update({
-      where: { id },
+        where: { id },
       data: {
         status: 'completed'
       }
@@ -715,7 +715,7 @@ export class AttendanceService {
 
     // Atualizar o status do agendamento
     await this.prisma.schedule.update({
-      where: { id: attendance.scheduleId },
+        where: { id: attendance.scheduleId },
       data: {
         status: 'completed'
       }

@@ -9,6 +9,7 @@ import routes from './routes';
 import { specialtyRouter } from './routes/specialty.routes';
 import authRoutes from './routes/auth.routes';
 import { errorHandler } from './middlewares/errorHandler';
+import path from 'path';
 
 const app = express();
 
@@ -33,6 +34,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// Configuração para servir arquivos estáticos da pasta uploads
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Rota de health check
 app.get('/health', (req, res) => {
