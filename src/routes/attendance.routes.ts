@@ -92,9 +92,16 @@ router.post('/', async (req, res) => {
 // Atualizar um atendimento
 router.put('/:id', async (req, res) => {
   try {
+    console.log('Recebida requisição para atualizar atendimento:', {
+      id: req.params.id,
+      body: req.body
+    });
+
     const attendance = await attendanceService.update(req.params.id, req.body);
+    console.log('Atendimento atualizado com sucesso:', attendance);
     res.json(attendance);
   } catch (error: any) {
+    console.error('Erro ao atualizar atendimento:', error);
     res.status(error.statusCode || 500).json({ message: error.message });
   }
 });
@@ -103,6 +110,20 @@ router.put('/:id', async (req, res) => {
 router.put('/:id/complete', async (req, res) => {
   try {
     const attendance = await attendanceService.complete(req.params.id);
+    res.json(attendance);
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ message: error.message });
+  }
+});
+
+// Cancelar um atendimento
+router.put('/:id/cancel', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) {
+      return res.status(400).json({ message: 'O motivo do cancelamento é obrigatório' });
+    }
+    const attendance = await attendanceService.cancel(req.params.id, reason);
     res.json(attendance);
   } catch (error: any) {
     res.status(error.statusCode || 500).json({ message: error.message });

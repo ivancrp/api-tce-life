@@ -13,6 +13,10 @@ model Attendance {
   patientId       String
   doctorId        String
   status          String    @default("in_progress")
+  symptoms        String?
+  diagnosis       String?
+  prescription    String?
+  observations    String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   schedule        Schedule  @relation(fields: [scheduleId], references: [id])

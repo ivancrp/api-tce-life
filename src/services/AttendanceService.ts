@@ -44,11 +44,59 @@ interface CreateAttendanceDTO {
 }
 
 interface UpdateAttendanceDTO extends Partial<CreateAttendanceDTO> {
-  status?: 'in_progress' | 'completed';
+  status?: 'in_progress' | 'completed' | 'cancelled';
+  symptoms?: string;
+  diagnosis?: string;
+  prescription?: string;
+  observations?: string;
 }
 
 export class AttendanceService {
   constructor(private prisma: PrismaClient) {}
+
+  async startAttendance(scheduleId: string) {
+    // Verificar se o agendamento existe
+    const schedule = await this.prisma.schedule.findUnique({
+      where: { id: scheduleId },
+      include: {
+        user: true,
+        doctor: true
+      }
+    });
+
+    if (!schedule) {
+      throw new AppError('Agendamento não encontrado', 404);
+    }
+
+    // Verificar se já existe um atendimento para este agendamento
+    const existingAttendance = await this.prisma.attendance.findUnique({
+      where: { scheduleId }
+    });
+
+    if (existingAttendance) {
+      return this.findById(existingAttendance.id);
+    }
+
+    // Criar um novo atendimento
+    const attendance = await this.prisma.attendance.create({
+      data: {
+        scheduleId: schedule.id,
+        patientId: schedule.userId,
+        doctorId: schedule.doctorId,
+        status: 'in_progress'
+      }
+    });
+
+    // Atualizar o status do agendamento
+    await this.prisma.schedule.update({
+      where: { id: scheduleId },
+      data: {
+        status: 'in_progress'
+      }
+    });
+
+    return this.findById(attendance.id);
+  }
 
   async create(data: CreateAttendanceDTO) {
     const schedule = await this.prisma.schedule.findUnique({
@@ -78,17 +126,17 @@ export class AttendanceService {
       await this.prisma.$queryRaw`
         INSERT INTO vital_signs (
           id,
-          user_id,
-          attendance_id,
+          "userId",
+          "attendanceId",
           temperature,
-          blood_pressure,
-          heart_rate,
-          respiratory_rate,
-          oxygen_saturation,
+          "bloodPressure",
+          "heartRate",
+          "respiratoryRate",
+          "oxygenSaturation",
           weight,
           height,
-          created_at,
-          updated_at
+          "createdAt",
+          "updatedAt"
         ) VALUES (
           ${Prisma.raw('uuid_generate_v4()')},
           ${schedule.userId},
@@ -112,12 +160,12 @@ export class AttendanceService {
         await this.prisma.$queryRaw`
           INSERT INTO clinical_notes (
             id,
-            user_id,
-            attendance_id,
-            note_type,
+            "userId",
+            "attendanceId",
+            "noteType",
             content,
-            created_at,
-            updated_at
+            "createdAt",
+            "updatedAt"
           ) VALUES (
             ${Prisma.raw('uuid_generate_v4()')},
             ${schedule.userId},
@@ -137,18 +185,18 @@ export class AttendanceService {
         await this.prisma.$queryRaw`
           INSERT INTO medications (
             id,
-            user_id,
-            attendance_id,
+            "userId",
+            "attendanceId",
             name,
             dosage,
             frequency,
             duration,
             instructions,
-            start_date,
-            end_date,
+            "startDate",
+            "endDate",
             active,
-            created_at,
-            updated_at
+            "createdAt",
+            "updatedAt"
           ) VALUES (
             ${Prisma.raw('uuid_generate_v4()')},
             ${schedule.userId},
@@ -174,14 +222,14 @@ export class AttendanceService {
         await this.prisma.$queryRaw`
           INSERT INTO medical_exams (
             id,
-            user_id,
-            attendance_id,
-            exam_type,
-            request_date,
+            "userId",
+            "attendanceId",
+            "examType",
+            "requestDate",
             laboratory,
             observations,
-            created_at,
-            updated_at
+            "createdAt",
+            "updatedAt"
           ) VALUES (
             ${Prisma.raw('uuid_generate_v4()')},
             ${schedule.userId},
@@ -203,16 +251,16 @@ export class AttendanceService {
         await this.prisma.$queryRaw`
           INSERT INTO medical_certificates (
             id,
-            user_id,
-            attendance_id,
+            "userId",
+            "attendanceId",
             type,
-            start_date,
-            end_date,
+            "startDate",
+            "endDate",
             cid,
             description,
-            days_off,
-            created_at,
-            updated_at
+            "daysOff",
+            "createdAt",
+            "updatedAt"
           ) VALUES (
             ${Prisma.raw('uuid_generate_v4()')},
             ${schedule.userId},
@@ -234,14 +282,29 @@ export class AttendanceService {
   }
 
   async findById(id: string) {
+    console.log('Buscando atendimento por ID:', id);
+    
     const attendance = await this.prisma.attendance.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        scheduleId: true,
+        patientId: true,
+        doctorId: true,
+        status: true,
+        symptoms: true,
+        diagnosis: true,
+        prescription: true,
+        observations: true,
+        createdAt: true,
+        updatedAt: true,
         patient: true,
         doctor: true,
         schedule: true
       }
     });
+
+    console.log('Resultado da busca:', attendance);
 
     if (!attendance) {
       throw new AppError('Atendimento não encontrado', 404);
@@ -257,30 +320,38 @@ export class AttendanceService {
     ] = await Promise.all([
       this.prisma.$queryRaw`
         SELECT * FROM vital_signs
-        WHERE attendance_id = ${id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM clinical_notes
-        WHERE attendance_id = ${id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM medications
-        WHERE attendance_id = ${id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM medical_exams
-        WHERE attendance_id = ${id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM medical_certificates
-        WHERE attendance_id = ${id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${id}
+        ORDER BY "createdAt" DESC
       `
     ]);
+
+    console.log('Registros relacionados:', {
+      vitalSigns,
+      clinicalNotes,
+      medications,
+      medicalExams,
+      medicalCertificates
+    });
 
     return {
       ...attendance,
@@ -295,7 +366,18 @@ export class AttendanceService {
   async findByScheduleId(scheduleId: string) {
     const attendance = await this.prisma.attendance.findUnique({
       where: { scheduleId },
-      include: {
+      select: {
+        id: true,
+        scheduleId: true,
+        patientId: true,
+        doctorId: true,
+        status: true,
+        symptoms: true,
+        diagnosis: true,
+        prescription: true,
+        observations: true,
+        createdAt: true,
+        updatedAt: true,
         patient: true,
         doctor: true,
         schedule: true
@@ -316,28 +398,28 @@ export class AttendanceService {
     ] = await Promise.all([
       this.prisma.$queryRaw`
         SELECT * FROM vital_signs
-        WHERE attendance_id = ${attendance.id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${attendance.id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM clinical_notes
-        WHERE attendance_id = ${attendance.id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${attendance.id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM medications
-        WHERE attendance_id = ${attendance.id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${attendance.id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM medical_exams
-        WHERE attendance_id = ${attendance.id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${attendance.id}
+        ORDER BY "createdAt" DESC
       `,
       this.prisma.$queryRaw`
         SELECT * FROM medical_certificates
-        WHERE attendance_id = ${attendance.id}
-        ORDER BY created_at DESC
+        WHERE "attendanceId" = ${attendance.id}
+        ORDER BY "createdAt" DESC
       `
     ]);
 
@@ -361,167 +443,68 @@ export class AttendanceService {
     }
 
     // Atualizar o atendimento
-    await this.prisma.attendance.update({
+    const updatedAttendance = await this.prisma.attendance.update({
       where: { id },
       data: {
-        status: data.status
+        status: data.status,
+        symptoms: data.symptoms,
+        diagnosis: data.diagnosis,
+        prescription: data.prescription,
+        observations: data.observations
       }
     });
 
-    // Se houver sinais vitais, criar novo registro
+    // Se houver sinais vitais, atualizar ou criar novo registro
     if (data.vitalSigns) {
-      await this.prisma.$queryRaw`
-        INSERT INTO vital_signs (
-          id,
-          user_id,
-          attendance_id,
-          temperature,
-          blood_pressure,
-          heart_rate,
-          respiratory_rate,
-          oxygen_saturation,
-          weight,
-          height,
-          created_at,
-          updated_at
-        ) VALUES (
-          ${Prisma.raw('uuid_generate_v4()')},
-          ${attendance.patientId},
-          ${attendance.id},
-          ${data.vitalSigns.temperature},
-          ${data.vitalSigns.bloodPressure},
-          ${data.vitalSigns.heartRate},
-          ${data.vitalSigns.respiratoryRate},
-          ${data.vitalSigns.oxygenSaturation},
-          ${data.vitalSigns.weight},
-          ${data.vitalSigns.height},
-          NOW(),
-          NOW()
-        )
-      `;
+      // Buscar o último registro de sinais vitais deste atendimento
+      const lastVitalSigns = await this.prisma.vitalSigns.findFirst({
+        where: { attendanceId: attendance.id },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (lastVitalSigns) {
+        // Atualizar o registro existente
+        await this.prisma.vitalSigns.update({
+          where: { id: lastVitalSigns.id },
+          data: {
+            temperature: data.vitalSigns.temperature,
+            bloodPressure: data.vitalSigns.bloodPressure,
+            heartRate: data.vitalSigns.heartRate,
+            respiratoryRate: data.vitalSigns.respiratoryRate,
+            oxygenSaturation: data.vitalSigns.oxygenSaturation,
+            weight: data.vitalSigns.weight,
+            height: data.vitalSigns.height
+          }
+        });
+      } else {
+        // Criar novo registro
+        await this.prisma.vitalSigns.create({
+          data: {
+            userId: attendance.patientId,
+            attendanceId: attendance.id,
+            temperature: data.vitalSigns.temperature,
+            bloodPressure: data.vitalSigns.bloodPressure,
+            heartRate: data.vitalSigns.heartRate,
+            respiratoryRate: data.vitalSigns.respiratoryRate,
+            oxygenSaturation: data.vitalSigns.oxygenSaturation,
+            weight: data.vitalSigns.weight,
+            height: data.vitalSigns.height
+          }
+        });
+      }
     }
 
     // Se houver anotações clínicas, criar novos registros
     if (data.clinicalNotes) {
       for (const note of data.clinicalNotes) {
-        await this.prisma.$queryRaw`
-          INSERT INTO clinical_notes (
-            id,
-            user_id,
-            attendance_id,
-            note_type,
-            content,
-            created_at,
-            updated_at
-          ) VALUES (
-            ${Prisma.raw('uuid_generate_v4()')},
-            ${attendance.patientId},
-            ${attendance.id},
-            ${note.noteType},
-            ${note.content},
-            NOW(),
-            NOW()
-          )
-        `;
-      }
-    }
-
-    // Se houver medicações, criar novos registros
-    if (data.medications) {
-      for (const medication of data.medications) {
-        await this.prisma.$queryRaw`
-          INSERT INTO medications (
-            id,
-            user_id,
-            attendance_id,
-            name,
-            dosage,
-            frequency,
-            duration,
-            instructions,
-            start_date,
-            end_date,
-            active,
-            created_at,
-            updated_at
-          ) VALUES (
-            ${Prisma.raw('uuid_generate_v4()')},
-            ${attendance.patientId},
-            ${attendance.id},
-            ${medication.name},
-            ${medication.dosage},
-            ${medication.frequency},
-            ${medication.duration},
-            ${medication.instructions},
-            ${medication.startDate},
-            ${medication.endDate},
-            true,
-            NOW(),
-            NOW()
-          )
-        `;
-      }
-    }
-
-    // Se houver exames, criar novos registros
-    if (data.medicalExams) {
-      for (const exam of data.medicalExams) {
-        await this.prisma.$queryRaw`
-          INSERT INTO medical_exams (
-            id,
-            user_id,
-            attendance_id,
-            exam_type,
-            request_date,
-            laboratory,
-            observations,
-            created_at,
-            updated_at
-          ) VALUES (
-            ${Prisma.raw('uuid_generate_v4()')},
-            ${attendance.patientId},
-            ${attendance.id},
-            ${exam.examType},
-            ${exam.requestDate},
-            ${exam.laboratory},
-            ${exam.observations},
-            NOW(),
-            NOW()
-          )
-        `;
-      }
-    }
-
-    // Se houver atestados, criar novos registros
-    if (data.medicalCertificates) {
-      for (const certificate of data.medicalCertificates) {
-        await this.prisma.$queryRaw`
-          INSERT INTO medical_certificates (
-            id,
-            user_id,
-            attendance_id,
-            type,
-            start_date,
-            end_date,
-            cid,
-            description,
-            days_off,
-            created_at,
-            updated_at
-          ) VALUES (
-            ${Prisma.raw('uuid_generate_v4()')},
-            ${attendance.patientId},
-            ${attendance.id},
-            ${certificate.type},
-            ${certificate.startDate},
-            ${certificate.endDate},
-            ${certificate.cid},
-            ${certificate.description},
-            ${certificate.daysOff},
-            NOW(),
-            NOW()
-          )
-        `;
+        await this.prisma.clinicalNote.create({
+          data: {
+            userId: attendance.patientId,
+            attendanceId: attendance.id,
+            noteType: note.noteType,
+            content: note.content
+          }
+        });
       }
     }
 
@@ -550,6 +533,35 @@ export class AttendanceService {
       where: { id: attendance.scheduleId },
       data: {
         status: 'completed'
+      }
+    });
+
+    return this.findById(id);
+  }
+
+  async cancel(id: string, reason: string) {
+    const attendance = await this.prisma.attendance.findUnique({
+      where: { id }
+    });
+
+    if (!attendance) {
+      throw new AppError('Atendimento não encontrado', 404);
+    }
+
+    // Atualizar o status do atendimento
+    await this.prisma.attendance.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+        observations: reason // Salvando o motivo do cancelamento nas observações
+      }
+    });
+
+    // Atualizar o status do agendamento
+    await this.prisma.schedule.update({
+      where: { id: attendance.scheduleId },
+      data: {
+        status: 'cancelled'
       }
     });
 
